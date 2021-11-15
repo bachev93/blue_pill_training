@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <string.h>
+#include <cstdio>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +56,16 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#ifdef __cplusplus
+ extern "C" {
+#endif
+int __io_putchar(int ch) {
+  HAL_UART_Transmit(&huart1, reinterpret_cast<uint8_t*>(&ch), 1, 100);
+  return ch;
+}
+#ifdef __cplusplus
+}
+#endif
 
 /* USER CODE END 0 */
 
@@ -66,7 +76,7 @@ static void MX_USART1_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint8_t msg[] = "Hello!!!";
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -99,7 +109,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    HAL_UART_Transmit(&huart1, msg, sizeof(msg), 100);
+    printf("Hello, World! %d\n", 2021);
     HAL_Delay(1000);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
   }
