@@ -56,6 +56,12 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+  if(GPIO_Pin == GPIO_PIN_0) {
+    printf("interrupt pin number: 0\r\n");
+  }
+}
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -66,7 +72,6 @@ int __io_putchar(int ch) {
 #ifdef __cplusplus
 }
 #endif
-
 /* USER CODE END 0 */
 
 /**
@@ -109,7 +114,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    printf("Hello, World! %d\n", 2021);
+    printf("Hello, World! %d\r\n", 2021);
     HAL_Delay(1000);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
   }
