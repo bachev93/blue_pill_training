@@ -65,15 +65,19 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+namespace {
+  uint8_t flag_10_sec = 0;
+  bool flag_button_pressed = false;
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if(GPIO_Pin == GPIO_PIN_0) {
-    printf("interrupt pin number: 0\r\n");
+    flag_button_pressed = true;
   }
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-  printf("Hello, World! %d\r\n", 2021);
-  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  ++flag_10_sec;
 }
 
 #ifdef __cplusplus
@@ -126,10 +130,25 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_ADCEx_Calibration_Start(&hadc1);
   while (1)
   {
     /* USER CODE END WHILE */
+    if(flag_button_pressed) {
+      flag_button_pressed = false;
+      printf("interrupt pin number: 0\r\n");
+    }
 
+    if(flag_10_sec >= 10) {
+      flag_10_sec = 0;
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+
+      HAL_ADC_Start(&hadc1);
+      HAL_ADC_PollForConversion(&hadc1, 100);
+      auto adc_val = HAL_ADC_GetValue(&hadc1);
+      HAL_ADC_Stop(&hadc1);
+      printf("ADC value in parrots: %d\r\n", adc_val);
+    }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
