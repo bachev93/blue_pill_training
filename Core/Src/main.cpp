@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <cstdio>
+#include <numeric>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,6 +69,7 @@ static void MX_I2C1_Init(void);
 namespace {
   uint8_t flag_10_sec = 0;
   bool flag_button_pressed = false;
+  bool adc_ready_flag = false;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -126,30 +128,43 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim1);
+  HAL_ADCEx_Calibration_Start(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_ADCEx_Calibration_Start(&hadc1);
   while (1)
   {
     /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
     if(flag_button_pressed) {
       flag_button_pressed = false;
       printf("interrupt pin number: 0\r\n");
     }
 
+    if(adc_ready_flag) {
+      adc_ready_flag = false;
+
+      const uint32_t SAMPLES_SIZE = 5;
+      uint32_t samples[SAMPLES_SIZE];
+      HAL_ADC_Start(&hadc1);
+      for(uint32_t i = 0; i < SAMPLES_SIZE; ++i) {
+        HAL_ADC_PollForConversion(&hadc1, 10);
+        samples[i] = HAL_ADC_GetValue(&hadc1);
+      }
+      HAL_ADC_Stop(&hadc1);
+
+      // printf("ADC val1: %d, val2: %d, val3: %d, val4: %d, val5: %d\r\n", samples[0], samples[1], samples[2], samples[3], samples[4]);
+      auto average = std::accumulate(samples, samples + SAMPLES_SIZE, 0) / SAMPLES_SIZE;
+      printf("average adc val: %d\r\n", average);
+    }
+
     if(flag_10_sec >= 10) {
       flag_10_sec = 0;
+      adc_ready_flag = true;
       HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-
-      HAL_ADC_Start(&hadc1);
-      HAL_ADC_PollForConversion(&hadc1, 100);
-      auto adc_val = HAL_ADC_GetValue(&hadc1);
-      HAL_ADC_Stop(&hadc1);
-      printf("ADC value in parrots: %d\r\n", adc_val);
     }
-    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
@@ -220,7 +235,7 @@ static void MX_ADC1_Init(void)
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -233,7 +248,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_13CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
