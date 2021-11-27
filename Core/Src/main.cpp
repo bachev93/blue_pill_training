@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <cstdio>
 #include <numeric>
+#include <iterator>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,25 +62,29 @@ static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-
+void check_charging();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 namespace {
-  uint8_t flag_10_sec = 0;
-  bool flag_button_pressed = false;
-  bool adc_ready_flag = false;
+  uint8_t adc_tick = 0;
+  uint8_t btn_tick = 0;
+  bool btn_was_pressed = false;
+  bool adc_ready = false;
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-  if(GPIO_Pin == GPIO_PIN_0) {
-    flag_button_pressed = true;
-  }
-}
+// void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+//   if(GPIO_Pin == GPIO_PIN_0) {
+//     btn_was_pressed = true;
+//   }
+// }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-  ++flag_10_sec;
+  ++adc_tick;
+  if(btn_was_pressed) {
+    ++btn_tick;
+  }
 }
 
 #ifdef __cplusplus
@@ -138,31 +143,57 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if(flag_button_pressed) {
-      flag_button_pressed = false;
-      printf("interrupt pin number: 0\r\n");
+    // TODO: implement average filter
+    if(btn_was_pressed && !HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) && (btn_tick <= 2)) {
+      btn_was_pressed = false;
+      btn_tick = 0;
+      printf("short button press\r\n");
+    } else if(btn_was_pressed && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) && (btn_tick >= 5)) {
+      btn_was_pressed = false;
+      btn_tick = 0;
+      printf("long button press\r\n");
     }
 
-    if(adc_ready_flag) {
-      adc_ready_flag = false;
+    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) && !btn_was_pressed) {
+      // TODO: temp variant of debounce
+      HAL_Delay(50);
+      if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)) {
+        btn_was_pressed = true;
+      }
+      // average filter
+      // const uint8_t presses_count = 10;
+      // uint8_t presses[presses_count];
+      // for(uint8_t i = 0; i < presses_count; ++i) {
+      //   presses[i] = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+      // }
+      // auto average = std::accumulate(std::begin(presses), std::end(presses), 0) / presses_count;
+      // if(average) {
+      //   btn_was_pressed = true;
+      // }
+    }
+    
+    // TODO: implement this !!!
+    check_charging();
+
+    if(adc_ready) {
+      adc_ready = false;
 
       const uint32_t SAMPLES_SIZE = 5;
       uint32_t samples[SAMPLES_SIZE];
       HAL_ADC_Start(&hadc1);
       for(uint32_t i = 0; i < SAMPLES_SIZE; ++i) {
-        HAL_ADC_PollForConversion(&hadc1, 10);
+        HAL_ADC_PollForConversion(&hadc1, 1);
         samples[i] = HAL_ADC_GetValue(&hadc1);
       }
       HAL_ADC_Stop(&hadc1);
 
-      // printf("ADC val1: %d, val2: %d, val3: %d, val4: %d, val5: %d\r\n", samples[0], samples[1], samples[2], samples[3], samples[4]);
-      auto average = std::accumulate(samples, samples + SAMPLES_SIZE, 0) / SAMPLES_SIZE;
-      printf("average adc val: %d\r\n", average);
+      auto average = std::accumulate(std::begin(samples), std::end(samples), 0) / SAMPLES_SIZE;
+      printf("average adc val: %ld\r\n", average);
     }
 
-    if(flag_10_sec >= 10) {
-      flag_10_sec = 0;
-      adc_ready_flag = true;
+    if(adc_tick >= 10) {
+      adc_tick = 0;
+      adc_ready = true;
       HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     }
   }
@@ -390,6 +421,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -397,26 +431,23 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PA2 PA3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+  /*Configure GPIO pins : PA0 PA2 PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_2|GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  /*Configure GPIO pins : PB12 PB13 PB14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
 /* USER CODE BEGIN 4 */
-
+void check_charging() {}
 /* USER CODE END 4 */
 
 /**
