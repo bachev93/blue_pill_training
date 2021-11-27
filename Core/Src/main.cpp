@@ -25,6 +25,8 @@
 #include <cstdio>
 #include <numeric>
 #include <iterator>
+
+#include "constants.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,29 +64,22 @@ static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-void check_charging();
+  enum class ButtonPressType {SHORT_PRESS, LONG_PRESS, NO_PRESS};
+  ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long);
+
+  void check_charging();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 namespace {
+  // some auxiliary variables
   uint8_t adc_tick = 0;
-  uint8_t btn_tick = 0;
-  bool btn_was_pressed = false;
   bool adc_ready = false;
 }
 
-// void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-//   if(GPIO_Pin == GPIO_PIN_0) {
-//     btn_was_pressed = true;
-//   }
-// }
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   ++adc_tick;
-  if(btn_was_pressed) {
-    ++btn_tick;
-  }
 }
 
 #ifdef __cplusplus
@@ -143,35 +138,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // TODO: implement average filter
-    if(btn_was_pressed && !HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) && (btn_tick <= 2)) {
-      btn_was_pressed = false;
-      btn_tick = 0;
+    auto button_press_state = check_button_press(GPIOA, GPIO_PIN_0, 50, 3000);
+    if(button_press_state == ButtonPressType::SHORT_PRESS) {
+      printf("low thr in low mode: %d\r\n", constants::low_mode.low_threshold);
       printf("short button press\r\n");
-    } else if(btn_was_pressed && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) && (btn_tick >= 5)) {
-      btn_was_pressed = false;
-      btn_tick = 0;
+    } else if(button_press_state == ButtonPressType::LONG_PRESS) {
       printf("long button press\r\n");
     }
 
-    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) && !btn_was_pressed) {
-      // TODO: temp variant of debounce
-      HAL_Delay(50);
-      if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)) {
-        btn_was_pressed = true;
-      }
-      // average filter
-      // const uint8_t presses_count = 10;
-      // uint8_t presses[presses_count];
-      // for(uint8_t i = 0; i < presses_count; ++i) {
-      //   presses[i] = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-      // }
-      // auto average = std::accumulate(std::begin(presses), std::end(presses), 0) / presses_count;
-      // if(average) {
-      //   btn_was_pressed = true;
-      // }
-    }
-    
     // TODO: implement this !!!
     check_charging();
 
@@ -448,6 +422,28 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void check_charging() {}
+
+ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long) {
+  auto result = ButtonPressType::NO_PRESS;
+  auto curr_time = HAL_GetTick();
+  auto diff_time = time_ms_long - time_ms_short;
+
+  if(HAL_GPIO_ReadPin(port, pin)) {
+    result = ButtonPressType::SHORT_PRESS;
+    // debounce time
+    HAL_Delay(time_ms_short);
+
+    while(HAL_GPIO_ReadPin(port, pin)) {
+      if(HAL_GetTick() - curr_time >= diff_time) {
+        result = ButtonPressType::LONG_PRESS;
+        break;
+      }
+    }
+  }
+  // short delay to counter debounce on release
+  HAL_Delay(100);
+  return result;
+}
 /* USER CODE END 4 */
 
 /**
