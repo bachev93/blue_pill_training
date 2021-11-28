@@ -68,14 +68,42 @@ static void MX_I2C1_Init(void);
   ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long);
 
   void check_charging();
+  float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 namespace {
-  // some auxiliary variables
-  uint8_t adc_tick = 0;
-  bool adc_ready = false;
+uint8_t adc_tick = 0;
+bool adc_ready = false;
+
+class OperatingMode {
+  public:
+    OperatingMode() :
+      params_(constants::low_mode) {}
+
+    void change_mode() {
+      auto cur_mode = static_cast<int>(params_.mode);
+      auto mode_count = static_cast<int>(OPERATING_MODE_TYPE::MODE_COUNT);
+      OPERATING_MODE_TYPE next_mode_type = static_cast<OPERATING_MODE_TYPE>((cur_mode + 1) % mode_count);
+      if(next_mode_type == constants::low_mode.mode) {
+        params_ = constants::low_mode;
+        printf("low mode, light 1 LED, yellow address LED\r\n");
+      } else if(next_mode_type == constants::middle_mode.mode) {
+        params_ = constants::middle_mode;
+        printf("middle mode, light 2 LEDS, orange address LED\r\n");
+      } else {
+        params_ = constants::high_mode;
+        printf("high mode, light 3 LEDS, red address LED\r\n");
+      }
+    }
+
+    OperatingModeParams current_mode() const {
+      return params_;
+    }
+  private:
+    OperatingModeParams params_;
+};
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -101,7 +129,7 @@ int __io_putchar(int ch) {
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  OperatingMode mode;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -140,10 +168,10 @@ int main(void)
     /* USER CODE BEGIN 3 */
     auto button_press_state = check_button_press(GPIOA, GPIO_PIN_0, 50, 3000);
     if(button_press_state == ButtonPressType::SHORT_PRESS) {
-      printf("low thr in low mode: %d\r\n", constants::low_mode.low_threshold);
       printf("short button press\r\n");
+      mode.change_mode();
     } else if(button_press_state == ButtonPressType::LONG_PRESS) {
-      printf("long button press\r\n");
+      printf("long button press, powering off\r\n");
     }
 
     // TODO: implement this !!!
@@ -152,17 +180,8 @@ int main(void)
     if(adc_ready) {
       adc_ready = false;
 
-      const uint32_t SAMPLES_SIZE = 5;
-      uint32_t samples[SAMPLES_SIZE];
-      HAL_ADC_Start(&hadc1);
-      for(uint32_t i = 0; i < SAMPLES_SIZE; ++i) {
-        HAL_ADC_PollForConversion(&hadc1, 1);
-        samples[i] = HAL_ADC_GetValue(&hadc1);
-      }
-      HAL_ADC_Stop(&hadc1);
-
-      auto average = std::accumulate(std::begin(samples), std::end(samples), 0) / SAMPLES_SIZE;
-      printf("average adc val: %ld\r\n", average);
+      auto bat_voltage = get_battery_voltage(&hadc1);
+      printf("battery voltage: %f\r\n", bat_voltage);
     }
 
     if(adc_tick >= 10) {
@@ -443,6 +462,21 @@ ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t ti
   // short delay to counter debounce on release
   HAL_Delay(100);
   return result;
+}
+
+float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {
+  uint32_t samples[samples_size];
+
+  HAL_ADC_Start(hadc);
+  for(auto i = 0; i < samples_size; ++i) {
+    HAL_ADC_PollForConversion(hadc, 1);
+    samples[i] = HAL_ADC_GetValue(hadc);
+  }
+  HAL_ADC_Stop(hadc);
+
+  auto average = std::accumulate(samples, samples + samples_size, 0) / samples_size;
+  // TODO: change 4095 to constant 12 bit integer max val
+  return constants::vbat / 4095 * average;
 }
 /* USER CODE END 4 */
 
