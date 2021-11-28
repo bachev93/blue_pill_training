@@ -6,9 +6,11 @@
 #include "stm32f1xx_hal_gpio.h"
 
 namespace thermoregulator {
-enum class OPERATING_MODE_TYPE {LOW, MIDDLE, HIGH, MODE_COUNT};
+enum class ChargingStatus {DEVICE_CHARGING, DEVICE_CHARGED, DEVICE_WORKING, UNKNOWN};
+
+enum class OperatingModeType {LOW, MIDDLE, HIGH, MODE_COUNT};
 struct OperatingModeParams {
-  OPERATING_MODE_TYPE mode;
+  OperatingModeType mode;
   uint8_t low_threshold;
   uint8_t high_threshold;
 };
@@ -22,9 +24,9 @@ namespace constants {
 // battery voltage max value
 const float vbat = 3.3;
 
-const OperatingModeParams low_mode = {OPERATING_MODE_TYPE::LOW, 38, 40};
-const OperatingModeParams middle_mode = {OPERATING_MODE_TYPE::MIDDLE, 40, 45};
-const OperatingModeParams high_mode = {OPERATING_MODE_TYPE::HIGH, 45, 50};
+const OperatingModeParams low_mode = {OperatingModeType::LOW, 38, 40};
+const OperatingModeParams middle_mode = {OperatingModeType::MIDDLE, 40, 45};
+const OperatingModeParams high_mode = {OperatingModeType::HIGH, 45, 50};
 
 const Led mode_led1 = {GPIOB, GPIO_PIN_12};
 const Led mode_led2 = {GPIOB, GPIO_PIN_13};

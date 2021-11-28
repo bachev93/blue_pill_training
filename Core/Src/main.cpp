@@ -67,7 +67,7 @@ static void MX_I2C1_Init(void);
   enum class ButtonPressType {SHORT_PRESS, LONG_PRESS, NO_PRESS};
   ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long);
 
-  void check_charging();
+  thermoregulator::ChargingStatus charging_status();
   float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
 /* USER CODE END PFP */
 
@@ -88,26 +88,26 @@ class OperatingMode {
 
     void change_mode() {
       auto cur_mode = static_cast<int>(params_.mode);
-      auto mode_count = static_cast<int>(thermoregulator::OPERATING_MODE_TYPE::MODE_COUNT);
-      thermoregulator::OPERATING_MODE_TYPE next_mode_type = static_cast<thermoregulator::OPERATING_MODE_TYPE>((cur_mode + 1) % mode_count);
+      auto mode_count = static_cast<int>(thermoregulator::OperatingModeType::MODE_COUNT);
+      thermoregulator::OperatingModeType next_mode_type = static_cast<thermoregulator::OperatingModeType>((cur_mode + 1) % mode_count);
 
       switch (next_mode_type)
       {
-      case thermoregulator::OPERATING_MODE_TYPE::LOW:
+      case thermoregulator::OperatingModeType::LOW:
         params_ = thermoregulator::constants::low_mode;
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
         printf("low mode, yellow address LED\r\n");
         break;
-      case thermoregulator::OPERATING_MODE_TYPE::MIDDLE:
+      case thermoregulator::OperatingModeType::MIDDLE:
         params_ = thermoregulator::constants::middle_mode;
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
         printf("middle mode, orange address LED\r\n");
         break;
-      case thermoregulator::OPERATING_MODE_TYPE::HIGH:
+      case thermoregulator::OperatingModeType::HIGH:
         params_ = thermoregulator::constants::high_mode;
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_SET);
@@ -198,9 +198,6 @@ int main(void)
       printf("long button press, powering off\r\n");
     }
 
-    // TODO: implement this !!!
-    check_charging();
-
     if(adc_ready) {
       adc_ready = false;
 
@@ -212,6 +209,23 @@ int main(void)
       adc_tick = 0;
       adc_ready = true;
       HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+
+      auto charge_state = charging_status();
+      switch (charge_state)
+      {
+      case thermoregulator::ChargingStatus::DEVICE_CHARGING:
+        printf("device is charging\r\n");
+        break;
+      case thermoregulator::ChargingStatus::DEVICE_CHARGED:
+        printf("device is charged\r\n");
+        break;
+      case thermoregulator::ChargingStatus::DEVICE_WORKING:
+        printf("device is working\r\n");
+        break;
+      default:
+        printf("unknown charging status\r\n");
+        break;
+    }
     }
   }
   /* USER CODE END 3 */
@@ -464,7 +478,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void check_charging() {}
+thermoregulator::ChargingStatus charging_status() {
+  bool state1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2);
+  bool state2 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3);
+
+  thermoregulator::ChargingStatus res;
+  if(state1 && state2) {
+    res = thermoregulator::ChargingStatus::DEVICE_WORKING;
+  } else if(!state1 && state2) {
+    res = thermoregulator::ChargingStatus::DEVICE_CHARGING;
+  } else if(state1 && !state2) {
+    res = thermoregulator::ChargingStatus::DEVICE_CHARGED;
+  } else {
+    res = thermoregulator::ChargingStatus::UNKNOWN;
+  }
+
+  return res;
+}
 
 ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long) {
   auto result = ButtonPressType::NO_PRESS;
