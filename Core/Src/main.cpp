@@ -80,29 +80,51 @@ bool adc_ready = false;
 class OperatingMode {
   public:
     OperatingMode() :
-      params_(constants::low_mode) {}
+      params_(thermoregulator::constants::low_mode) {
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
+      }
 
     void change_mode() {
       auto cur_mode = static_cast<int>(params_.mode);
-      auto mode_count = static_cast<int>(OPERATING_MODE_TYPE::MODE_COUNT);
-      OPERATING_MODE_TYPE next_mode_type = static_cast<OPERATING_MODE_TYPE>((cur_mode + 1) % mode_count);
-      if(next_mode_type == constants::low_mode.mode) {
-        params_ = constants::low_mode;
-        printf("low mode, light 1 LED, yellow address LED\r\n");
-      } else if(next_mode_type == constants::middle_mode.mode) {
-        params_ = constants::middle_mode;
-        printf("middle mode, light 2 LEDS, orange address LED\r\n");
-      } else {
-        params_ = constants::high_mode;
-        printf("high mode, light 3 LEDS, red address LED\r\n");
+      auto mode_count = static_cast<int>(thermoregulator::OPERATING_MODE_TYPE::MODE_COUNT);
+      thermoregulator::OPERATING_MODE_TYPE next_mode_type = static_cast<thermoregulator::OPERATING_MODE_TYPE>((cur_mode + 1) % mode_count);
+
+      switch (next_mode_type)
+      {
+      case thermoregulator::OPERATING_MODE_TYPE::LOW:
+        params_ = thermoregulator::constants::low_mode;
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
+        printf("low mode, yellow address LED\r\n");
+        break;
+      case thermoregulator::OPERATING_MODE_TYPE::MIDDLE:
+        params_ = thermoregulator::constants::middle_mode;
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
+        printf("middle mode, orange address LED\r\n");
+        break;
+      case thermoregulator::OPERATING_MODE_TYPE::HIGH:
+        params_ = thermoregulator::constants::high_mode;
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_SET);
+        printf("high mode, red address LED\r\n");
+        break;
+      default:
+        printf("unknown operating mode type\r\n");
+        break;
       }
     }
 
-    OperatingModeParams current_mode() const {
+    thermoregulator::OperatingModeParams current_mode() const {
       return params_;
     }
   private:
-    OperatingModeParams params_;
+    thermoregulator::OperatingModeParams params_;
 };
 }
 
@@ -129,7 +151,7 @@ int __io_putchar(int ch) {
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  OperatingMode mode;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -161,6 +183,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  OperatingMode mode;
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -476,7 +500,7 @@ float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {
 
   auto average = std::accumulate(samples, samples + samples_size, 0) / samples_size;
   // TODO: change 4095 to constant 12 bit integer max val
-  return constants::vbat / 4095 * average;
+  return thermoregulator::constants::vbat / 4095 * average;
 }
 /* USER CODE END 4 */
 
