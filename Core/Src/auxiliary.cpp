@@ -104,22 +104,26 @@ DeviceStatus device_status() {
   return res;
 }
 
-void change_addr_led_behaviour(DeviceStatus dev_state) {
+void change_addr_led_behaviour(DeviceStatus dev_state, Color color) {
   switch (dev_state) {
   case DeviceStatus::DEVICE_WORKING:
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    set_addr_led_color(color);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
     printf("device is working, address LED color depends on battery charging level\r\n");
     break;
   case DeviceStatus::DEVICE_CHARGING:
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    set_addr_led_color(Color::Blue);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
     printf("device is charging, PWM blue address LED\r\n");
     break;
   case DeviceStatus::DEVICE_CHARGED:
+    set_addr_led_color(Color::Blue);
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
     printf("device is charged, blue address LED\r\n");
     break;
   default:
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    set_addr_led_color(color);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
     printf("unknown charging status\r\n");
     break;
   }
@@ -149,5 +153,14 @@ void poweroff() {
   // GPIO_InitStruct.Pull = GPIO_NOPULL;
   // GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   // HAL_GPIO_Init(constants::btn.port, &GPIO_InitStruct);
+}
+
+Color get_color_by_battery_level(float bat_level) {
+  // TODO: add here some maths to calculate color
+  return Color::Green;
+}
+
+void set_addr_led_color(Color) {
+  // TODO: For Max
 }
 }

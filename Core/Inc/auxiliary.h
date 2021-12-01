@@ -21,13 +21,17 @@ class OperatingMode {
     OperatingModeParams params_;
 };
 
+enum class Color {Red, Green, Blue, Orange, Yellow};
+Color get_color_by_battery_level(float bat_level);
+void set_addr_led_color(Color);
+
 enum class ButtonPressType {SHORT_PRESS, LONG_PRESS, NO_PRESS};
 ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin,
                                    uint32_t time_ms_short, uint32_t time_ms_long);
 
 enum class DeviceStatus {DEVICE_WORKING, DEVICE_CHARGING, DEVICE_CHARGED, UNKNOWN};
 DeviceStatus device_status();
-void change_addr_led_behaviour(DeviceStatus dev_state);
+void change_addr_led_behaviour(DeviceStatus dev_state, Color = Color::Red);
 
 float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
 void poweroff();

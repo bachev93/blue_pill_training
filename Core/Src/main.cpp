@@ -195,6 +195,8 @@ int main(void)
       adc_tick = 0;
 
       auto bat_voltage = get_battery_voltage(&hadc1);
+      auto addr_led_color = get_color_by_battery_level(bat_voltage);
+      change_addr_led_behaviour(last_device_state, addr_led_color);
       printf("battery voltage: %f\r\n", bat_voltage);
       if(bat_voltage < constants::vbat_low_level) {
         printf("battery charge level below %f volts\r\n", constants::vbat_low_level);
