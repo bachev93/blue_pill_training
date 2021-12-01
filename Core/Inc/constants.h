@@ -6,8 +6,6 @@
 #include "stm32f1xx_hal_gpio.h"
 
 namespace thermoregulator {
-enum class ChargingStatus {DEVICE_CHARGING, DEVICE_CHARGED, DEVICE_WORKING, UNKNOWN};
-
 enum class OperatingModeType {LOW, MIDDLE, HIGH, MODE_COUNT};
 struct OperatingModeParams {
   OperatingModeType mode;

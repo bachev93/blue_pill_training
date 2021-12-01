@@ -23,10 +23,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <cstdio>
-#include <numeric>
-#include <iterator>
 
 #include "constants.h"
+#include "auxiliary.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,11 +63,7 @@ static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-  enum class ButtonPressType {SHORT_PRESS, LONG_PRESS, NO_PRESS};
-  ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long);
 
-  thermoregulator::ChargingStatus charging_status();
-  float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -76,56 +71,6 @@ static void MX_I2C1_Init(void);
 namespace {
 uint8_t adc_tick = 0;
 bool adc_ready = false;
-
-class OperatingMode {
-  public:
-    OperatingMode() :
-      params_(thermoregulator::constants::low_mode) {
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
-      }
-
-    void change_mode() {
-      auto cur_mode = static_cast<int>(params_.mode);
-      auto mode_count = static_cast<int>(thermoregulator::OperatingModeType::MODE_COUNT);
-      thermoregulator::OperatingModeType next_mode_type = static_cast<thermoregulator::OperatingModeType>((cur_mode + 1) % mode_count);
-
-      switch (next_mode_type)
-      {
-      case thermoregulator::OperatingModeType::LOW:
-        params_ = thermoregulator::constants::low_mode;
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
-        printf("low mode, yellow address LED\r\n");
-        break;
-      case thermoregulator::OperatingModeType::MIDDLE:
-        params_ = thermoregulator::constants::middle_mode;
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_RESET);
-        printf("middle mode, orange address LED\r\n");
-        break;
-      case thermoregulator::OperatingModeType::HIGH:
-        params_ = thermoregulator::constants::high_mode;
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led1.port, thermoregulator::constants::mode_led1.pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led2.port, thermoregulator::constants::mode_led2.pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(thermoregulator::constants::mode_led3.port, thermoregulator::constants::mode_led3.pin, GPIO_PIN_SET);
-        printf("high mode, red address LED\r\n");
-        break;
-      default:
-        printf("unknown operating mode type\r\n");
-        break;
-      }
-    }
-
-    thermoregulator::OperatingModeParams current_mode() const {
-      return params_;
-    }
-  private:
-    thermoregulator::OperatingModeParams params_;
-};
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -151,7 +96,7 @@ int __io_putchar(int ch) {
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  using namespace thermoregulator;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -213,13 +158,13 @@ int main(void)
       auto charge_state = charging_status();
       switch (charge_state)
       {
-      case thermoregulator::ChargingStatus::DEVICE_CHARGING:
+      case ChargingStatus::DEVICE_CHARGING:
         printf("device is charging\r\n");
         break;
-      case thermoregulator::ChargingStatus::DEVICE_CHARGED:
+      case ChargingStatus::DEVICE_CHARGED:
         printf("device is charged\r\n");
         break;
-      case thermoregulator::ChargingStatus::DEVICE_WORKING:
+      case ChargingStatus::DEVICE_WORKING:
         printf("device is working\r\n");
         break;
       default:
@@ -478,60 +423,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-thermoregulator::ChargingStatus charging_status() {
-  bool state1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2);
-  bool state2 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3);
 
-  thermoregulator::ChargingStatus res;
-  if(state1 && state2) {
-    res = thermoregulator::ChargingStatus::DEVICE_WORKING;
-  } else if(!state1 && state2) {
-    res = thermoregulator::ChargingStatus::DEVICE_CHARGING;
-  } else if(state1 && !state2) {
-    res = thermoregulator::ChargingStatus::DEVICE_CHARGED;
-  } else {
-    res = thermoregulator::ChargingStatus::UNKNOWN;
-  }
-
-  return res;
-}
-
-ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long) {
-  auto result = ButtonPressType::NO_PRESS;
-  auto curr_time = HAL_GetTick();
-  auto diff_time = time_ms_long - time_ms_short;
-
-  if(HAL_GPIO_ReadPin(port, pin)) {
-    result = ButtonPressType::SHORT_PRESS;
-    // debounce time
-    HAL_Delay(time_ms_short);
-
-    while(HAL_GPIO_ReadPin(port, pin)) {
-      if(HAL_GetTick() - curr_time >= diff_time) {
-        result = ButtonPressType::LONG_PRESS;
-        break;
-      }
-    }
-  }
-  // short delay to counter debounce on release
-  HAL_Delay(100);
-  return result;
-}
-
-float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {
-  uint32_t samples[samples_size];
-
-  HAL_ADC_Start(hadc);
-  for(auto i = 0; i < samples_size; ++i) {
-    HAL_ADC_PollForConversion(hadc, 1);
-    samples[i] = HAL_ADC_GetValue(hadc);
-  }
-  HAL_ADC_Stop(hadc);
-
-  auto average = std::accumulate(samples, samples + samples_size, 0) / samples_size;
-  // TODO: change 4095 to constant 12 bit integer max val
-  return thermoregulator::constants::vbat / 4095 * average;
-}
 /* USER CODE END 4 */
 
 /**
