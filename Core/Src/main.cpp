@@ -63,18 +63,26 @@ static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-
+void do_main_work(thermoregulator::OperatingMode& mode);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 namespace {
 uint8_t adc_tick = 0;
-bool adc_ready = false;
+
+thermoregulator::DeviceStatus last_device_state = thermoregulator::DeviceStatus::UNKNOWN;
+bool check_device_state = true;
+
+bool is_heating = true;
+uint16_t working_tick = 0;
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   ++adc_tick;
+  ++working_tick;
+
+  check_device_state = true;
 }
 
 #ifdef __cplusplus
@@ -135,7 +143,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    auto button_press_state = check_button_press(GPIOA, GPIO_PIN_0, 50, 3000);
+    if(check_device_state) {
+      check_device_state = false;
+
+      auto device_state = thermoregulator::device_status();
+      if(last_device_state != device_state) {
+        last_device_state = device_state;
+        change_addr_led_behaviour(last_device_state);
+      }
+
+      if(last_device_state == thermoregulator::DeviceStatus::DEVICE_WORKING) {
+        do_main_work(mode);
+      } else {
+        continue;
+      }
+    }
+
+    auto button_press_state = check_button_press(constants::btn.port, constants::btn.pin, 50, 3000);
     if(button_press_state == ButtonPressType::SHORT_PRESS) {
       printf("short button press\r\n");
       mode.change_mode();
@@ -143,34 +167,13 @@ int main(void)
       printf("long button press, powering off\r\n");
     }
 
-    if(adc_ready) {
-      adc_ready = false;
+    if(adc_tick >= constants::battery_check_time) {
+      adc_tick = 0;
 
+      // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
       auto bat_voltage = get_battery_voltage(&hadc1);
       printf("battery voltage: %f\r\n", bat_voltage);
-    }
-
-    if(adc_tick >= 10) {
-      adc_tick = 0;
-      adc_ready = true;
-      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-
-      auto charge_state = charging_status();
-      switch (charge_state)
-      {
-      case ChargingStatus::DEVICE_CHARGING:
-        printf("device is charging\r\n");
-        break;
-      case ChargingStatus::DEVICE_CHARGED:
-        printf("device is charged\r\n");
-        break;
-      case ChargingStatus::DEVICE_WORKING:
-        printf("device is working\r\n");
-        break;
-      default:
-        printf("unknown charging status\r\n");
-        break;
-    }
+      // TODO: add device powering off, if battery charging level is low
     }
   }
   /* USER CODE END 3 */
@@ -423,7 +426,28 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void do_main_work(thermoregulator::OperatingMode& mode) {
+  using namespace thermoregulator;
+  if(is_heating) {
+    if(working_tick < constants::working_time) {
+      //do main job
+    } else {
+      working_tick = 0;
+      is_heating = false;
 
+      // TODO: set dev to idle mode
+      printf("Go to idle\r\n");
+    }
+  } else {
+    if(working_tick >= constants::idle_time) {
+      working_tick = 0;
+      is_heating = true;
+
+      // TODO: set dev to working mode
+      printf("Go to work\r\n");
+    }
+  }
+}
 /* USER CODE END 4 */
 
 /**

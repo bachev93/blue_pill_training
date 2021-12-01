@@ -71,22 +71,40 @@ ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t ti
   return result;
 }
 
-ChargingStatus charging_status() {
-  bool state1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2);
-  bool state2 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3);
+DeviceStatus device_status() {
+  bool state1 = HAL_GPIO_ReadPin(constants::charge_state_pin1.port, constants::charge_state_pin1.pin);
+  bool state2 = HAL_GPIO_ReadPin(constants::charge_state_pin2.port, constants::charge_state_pin2.pin);
 
-  ChargingStatus res;
+  DeviceStatus res;
   if(state1 && state2) {
-    res = ChargingStatus::DEVICE_WORKING;
+    res = DeviceStatus::DEVICE_WORKING;
   } else if(!state1 && state2) {
-    res = ChargingStatus::DEVICE_CHARGING;
+    res = DeviceStatus::DEVICE_CHARGING;
   } else if(state1 && !state2) {
-    res = ChargingStatus::DEVICE_CHARGED;
+    res = DeviceStatus::DEVICE_CHARGED;
   } else {
-    res = ChargingStatus::UNKNOWN;
+    res = DeviceStatus::UNKNOWN;
   }
 
   return res;
+}
+
+void change_addr_led_behaviour(DeviceStatus dev_state) {
+  switch (dev_state) {
+  case DeviceStatus::DEVICE_WORKING:
+    printf("device is working, address LED color depends on battery charging level\r\n");
+    break;
+  case DeviceStatus::DEVICE_CHARGING:
+    printf("device is charging, PWM blue address LED\r\n");
+    break;
+  case DeviceStatus::DEVICE_CHARGED:
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+    printf("device is charged, blue address LED\r\n");
+    break;
+  default:
+    printf("unknown charging status\r\n");
+    break;
+  }
 }
 
 float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {

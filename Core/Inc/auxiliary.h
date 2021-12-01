@@ -20,10 +20,12 @@ class OperatingMode {
 };
 
 enum class ButtonPressType {SHORT_PRESS, LONG_PRESS, NO_PRESS};
-ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin, uint32_t time_ms_short, uint32_t time_ms_long);
+ButtonPressType check_button_press(GPIO_TypeDef* port, uint16_t pin,
+                                   uint32_t time_ms_short, uint32_t time_ms_long);
 
-enum class ChargingStatus {DEVICE_CHARGING, DEVICE_CHARGED, DEVICE_WORKING, UNKNOWN};
-ChargingStatus charging_status();
+enum class DeviceStatus {DEVICE_WORKING, DEVICE_CHARGING, DEVICE_CHARGED, UNKNOWN};
+DeviceStatus device_status();
+void change_addr_led_behaviour(DeviceStatus dev_state);
 
 float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
 }
