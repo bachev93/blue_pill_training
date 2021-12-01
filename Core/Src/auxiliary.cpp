@@ -5,11 +5,7 @@
 
 namespace thermoregulator {
 OperatingMode::OperatingMode() :
-  params_(constants::low_mode) {
-  HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-}
+  params_(constants::low_mode) {}
 
 void OperatingMode::change_mode() {
   auto cur_mode = static_cast<int>(params_.mode);
@@ -20,29 +16,48 @@ void OperatingMode::change_mode() {
   {
   case OperatingModeType::LOW:
     params_ = constants::low_mode;
+    break;
+  case OperatingModeType::MIDDLE:
+    params_ = constants::middle_mode;
+    break;
+  case OperatingModeType::HIGH:
+    params_ = constants::high_mode;
+    break;
+  default:
+    printf("unknown operating mode type\r\n");
+    break;
+  }
+}
+
+void OperatingMode::blink_leds() const {
+  switch (params_.mode)
+  {
+  case OperatingModeType::LOW:
+    printf("low mode, turn on LED1\r\n");
     HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-    printf("low mode, turn on LED1\r\n");
-  break;
+    break;
   case OperatingModeType::MIDDLE:
-    params_ = constants::middle_mode;
+    printf("middle mode, turn on LED1, LED2\r\n");
     HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-    printf("middle mode, turn on LED1, LED2\r\n");
-  break;
+    break;
   case OperatingModeType::HIGH:
-    params_ = constants::high_mode;
+    printf("high mode, turn on LED1, LED2, LED3\r\n");
     HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_SET);
-    printf("high mode, turn on LED1, LED2, LED3\r\n");
-  break;
-  default:
-    printf("unknown operating mode type\r\n");
-  break;
+    break;
   }
+}
+
+void OperatingMode::reset_leds() const {
+    printf("reset status leds\r\n");
+    HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
 }
 
 OperatingModeParams OperatingMode::current_mode() const {

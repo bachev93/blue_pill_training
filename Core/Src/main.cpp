@@ -76,6 +76,9 @@ bool check_device_state = true;
 
 bool is_heating = true;
 uint16_t working_tick = 0;
+
+bool btn_1st_press = false;
+uint8_t status_tick = 0;
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -83,6 +86,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   ++working_tick;
 
   check_device_state = true;
+
+  if(btn_1st_press) {
+    ++status_tick;
+  }
 }
 
 #ifdef __cplusplus
@@ -137,6 +144,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   OperatingMode mode;
+  mode.blink_leds();
+  HAL_Delay(constants::status_time * 1000);
+  mode.reset_leds();
 
   while (1)
   {
@@ -162,20 +172,32 @@ int main(void)
     auto button_press_state = check_button_press(constants::btn.port, constants::btn.pin, 50, 3000);
     if(button_press_state == ButtonPressType::SHORT_PRESS) {
       printf("short button press\r\n");
-      mode.change_mode();
+      if(btn_1st_press) {
+        mode.change_mode();
+        mode.blink_leds();
+        status_tick = 0;
+      } else {
+        btn_1st_press = true;
+        mode.blink_leds();
+      }
     } else if(button_press_state == ButtonPressType::LONG_PRESS) {
-      printf("long button press, powering off\r\n");
+      printf("long button press\r\n");
       poweroff();
+    }
+
+    if(status_tick >= constants::status_time) {
+      btn_1st_press = false;
+      status_tick = 0;
+      mode.reset_leds();
     }
 
     if(adc_tick >= constants::battery_check_time) {
       adc_tick = 0;
 
-      // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
       auto bat_voltage = get_battery_voltage(&hadc1);
       printf("battery voltage: %f\r\n", bat_voltage);
       if(bat_voltage < constants::vbat_low_level) {
-        printf("battery charge level below %f volts", constants::vbat_low_level);
+        printf("battery charge level below %f volts\r\n", constants::vbat_low_level);
         poweroff();
       }
     }

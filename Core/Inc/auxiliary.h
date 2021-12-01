@@ -14,6 +14,8 @@ class OperatingMode {
   public:
     OperatingMode();
     void change_mode();
+    void blink_leds() const;
+    void reset_leds() const;
     OperatingModeParams current_mode() const;
   private:
     OperatingModeParams params_;
