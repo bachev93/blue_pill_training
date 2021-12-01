@@ -28,5 +28,6 @@ DeviceStatus device_status();
 void change_addr_led_behaviour(DeviceStatus dev_state);
 
 float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
+void poweroff();
 }
 #endif // AUXILIRY_H

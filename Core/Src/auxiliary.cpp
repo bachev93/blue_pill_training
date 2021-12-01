@@ -23,21 +23,21 @@ void OperatingMode::change_mode() {
     HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-    printf("low mode, yellow address LED\r\n");
+    printf("low mode, turn on LED1\r\n");
   break;
   case OperatingModeType::MIDDLE:
     params_ = constants::middle_mode;
     HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-    printf("middle mode, orange address LED\r\n");
+    printf("middle mode, turn on LED1, LED2\r\n");
   break;
   case OperatingModeType::HIGH:
     params_ = constants::high_mode;
     HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_SET);
-    printf("high mode, red address LED\r\n");
+    printf("high mode, turn on LED1, LED2, LED3\r\n");
   break;
   default:
     printf("unknown operating mode type\r\n");
@@ -92,9 +92,11 @@ DeviceStatus device_status() {
 void change_addr_led_behaviour(DeviceStatus dev_state) {
   switch (dev_state) {
   case DeviceStatus::DEVICE_WORKING:
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
     printf("device is working, address LED color depends on battery charging level\r\n");
     break;
   case DeviceStatus::DEVICE_CHARGING:
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
     printf("device is charging, PWM blue address LED\r\n");
     break;
   case DeviceStatus::DEVICE_CHARGED:
@@ -102,6 +104,7 @@ void change_addr_led_behaviour(DeviceStatus dev_state) {
     printf("device is charged, blue address LED\r\n");
     break;
   default:
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
     printf("unknown charging status\r\n");
     break;
   }
@@ -120,5 +123,16 @@ float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {
   auto average = std::accumulate(samples, samples + samples_size, 0) / samples_size;
   // TODO: change 4095 to constant 12 bit integer max val
   return constants::vbat / 4095 * average;
+}
+
+void poweroff() {
+  printf("powering off\r\n");
+
+  // GPIO_InitTypeDef GPIO_InitStruct = {0};
+  // GPIO_InitStruct.Pin = constants::btn.pin;
+  // GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  // GPIO_InitStruct.Pull = GPIO_NOPULL;
+  // GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  // HAL_GPIO_Init(constants::btn.port, &GPIO_InitStruct);
 }
 }

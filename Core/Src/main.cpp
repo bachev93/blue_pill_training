@@ -151,12 +151,12 @@ int main(void)
         last_device_state = device_state;
         change_addr_led_behaviour(last_device_state);
       }
+    }
 
-      if(last_device_state == thermoregulator::DeviceStatus::DEVICE_WORKING) {
-        do_main_work(mode);
-      } else {
-        continue;
-      }
+    if(last_device_state == thermoregulator::DeviceStatus::DEVICE_WORKING) {
+      do_main_work(mode);
+    } else {
+      continue;
     }
 
     auto button_press_state = check_button_press(constants::btn.port, constants::btn.pin, 50, 3000);
@@ -165,6 +165,7 @@ int main(void)
       mode.change_mode();
     } else if(button_press_state == ButtonPressType::LONG_PRESS) {
       printf("long button press, powering off\r\n");
+      poweroff();
     }
 
     if(adc_tick >= constants::battery_check_time) {
@@ -173,7 +174,10 @@ int main(void)
       // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
       auto bat_voltage = get_battery_voltage(&hadc1);
       printf("battery voltage: %f\r\n", bat_voltage);
-      // TODO: add device powering off, if battery charging level is low
+      if(bat_voltage < constants::vbat_low_level) {
+        printf("battery charge level below %f volts", constants::vbat_low_level);
+        poweroff();
+      }
     }
   }
   /* USER CODE END 3 */
@@ -398,7 +402,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
