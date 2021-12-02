@@ -26,6 +26,7 @@
 
 #include "constants.h"
 #include "auxiliary.h"
+#include "tmp117.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,6 +64,7 @@ static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
+// void do_main_work(thermoregulator::OperatingMode& mode, thermoregulator::tmp117& thermosensor);
 void do_main_work(thermoregulator::OperatingMode& mode);
 /* USER CODE END PFP */
 
@@ -147,6 +149,8 @@ int main(void)
   mode.blink_leds();
   HAL_Delay(constants::status_time * 1000);
   mode.reset_leds();
+  // tmp117 thermosensor(&hi2c1, thermoregulator::ADDR::_V, mode.current_mode().low_threshold,
+  //                     mode.current_mode().high_threshold);
 
   while (1)
   {
@@ -164,6 +168,7 @@ int main(void)
     }
 
     if(last_device_state == thermoregulator::DeviceStatus::DEVICE_WORKING) {
+      // do_main_work(mode, thermosensor);
       do_main_work(mode);
     } else {
       continue;
@@ -193,6 +198,9 @@ int main(void)
 
     if(adc_tick >= constants::battery_check_time) {
       adc_tick = 0;
+
+      // auto temperature = thermosensor.get_temperature();
+      // printf("The temperature now is %d", temperature);
 
       auto bat_voltage = get_battery_voltage(&hadc1);
       auto addr_led_color = get_color_by_battery_level(bat_voltage);
@@ -464,6 +472,8 @@ void do_main_work(thermoregulator::OperatingMode& mode) {
       is_heating = false;
 
       // TODO: set dev to idle mode
+      // thermosensor.set_low_limit(0);
+      // thermosensor.set_high_limit(0);
       printf("Go to idle\r\n");
     }
   } else {
@@ -472,6 +482,8 @@ void do_main_work(thermoregulator::OperatingMode& mode) {
       is_heating = true;
 
       // TODO: set dev to working mode
+      // thermosensor.set_low_limit(mode.current_mode().low_threshold);
+      // thermosensor.set_high_limit(mode.current_mode().high_threshold);
       printf("Go to work\r\n");
     }
   }
