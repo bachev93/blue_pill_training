@@ -33,7 +33,7 @@ enum class DeviceStatus {DEVICE_WORKING, DEVICE_CHARGING, DEVICE_CHARGED, UNKNOW
 DeviceStatus device_status();
 void change_addr_led_behaviour(DeviceStatus dev_state, Color = Color::Red);
 
-float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size = 10);
+float get_battery_voltage(ADC_HandleTypeDef* hadc);
 void poweroff();
 }
 #endif // AUXILIRY_H

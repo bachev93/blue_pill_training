@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <iterator>
 #include <numeric>
 
 #include "auxiliary.h"
@@ -106,17 +107,19 @@ void change_addr_led_behaviour(DeviceStatus dev_state, Color color) {
   }
 }
 
-float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {
+float get_battery_voltage(ADC_HandleTypeDef* hadc) {
+  // TODO: sample_size should become compile-time constant
+  static const auto samples_size = 10ul;
   uint32_t samples[samples_size];
 
   HAL_ADC_Start(hadc);
-  for(auto i = 0; i < samples_size; ++i) {
+  for(size_t i = 0ul; i < samples_size; ++i) {
     HAL_ADC_PollForConversion(hadc, 1);
     samples[i] = HAL_ADC_GetValue(hadc);
   }
   HAL_ADC_Stop(hadc);
 
-  auto average = std::accumulate(samples, samples + samples_size, 0) / samples_size;
+  auto average = std::accumulate(std::begin(samples), std::end(samples), 0u) / samples_size;
   // TODO: change 4095 to constant 12 bit integer max val
   return constants::vbat / 4095 * average;
 }
