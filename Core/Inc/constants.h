@@ -9,21 +9,21 @@ namespace thermoregulator {
 enum class OperatingModeType {LOW, MIDDLE, HIGH, MODE_COUNT};
 struct OperatingModeParams {
   OperatingModeType mode;
-  uint8_t low_threshold;
-  uint8_t high_threshold;
+  int16_t low_threshold;
+  int16_t high_threshold;
 };
 
 struct Pin {
-GPIO_TypeDef* port;
-uint16_t pin;
+  GPIO_TypeDef* port;
+  uint16_t pin;
 };
 
 namespace constants {
 // battery voltage max value, in volts
-const float vbat = 3.3;
+const float vbat = 3.3f;
 
 // battery voltage level for powering off the device, in volts
-const float vbat_low_level = 1.5;
+const float vbat_low_level = 1.5f;
 
 // battery charging level check time, in sec
 const int battery_check_time = 10;

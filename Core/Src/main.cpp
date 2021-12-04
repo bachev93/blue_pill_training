@@ -149,8 +149,8 @@ int main(void)
   mode.blink_leds();
   HAL_Delay(constants::status_time * 1000);
   mode.reset_leds();
-  // tmp117 thermosensor(&hi2c1, thermoregulator::ADDR::_V, mode.current_mode().low_threshold,
-  //                     mode.current_mode().high_threshold);
+  tmp117 thermosensor(&hi2c1, thermoregulator::ADDR::FIRST, mode.current_mode().low_threshold,
+                      mode.current_mode().high_threshold);
 
   while (1)
   {
