@@ -24,8 +24,19 @@ struct message {
 #pragma pack(pop)
 static_assert(sizeof(message) == 3 * sizeof(uint8_t), "");
 
+
+/**
+ * @brief: Функция перевода
+ * @param: Значение температуры в градусах Цельсия
+ * @return: Значение температуры в условных единицах цены младшего бита
+ */
 int16_t t2lsb_v(int16_t v);
 
+/**
+ * @brief: Функция перевода
+ * @param: Значение температуры в условных единицах цены младшего бита
+ * @return: Значение температуры в градусах Цельсия
+ */
 float lsb_v2t(int16_t v);
 
 struct tmp117 {    
