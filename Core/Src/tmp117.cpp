@@ -20,7 +20,7 @@ void tmp117::set_high_limit(int16_t v) {
     HAL_I2C_Master_Transmit(hi2c_, static_cast<uint16_t>(addr_), reinterpret_cast<uint8_t*>(&m), sizeof(message), HAL_MAX_DELAY);
 }
 
-int16_t tmp117::get_temperature() const {
+float tmp117::get_temperature() const {
     message m { RG::TEMP, 0 };
     HAL_I2C_Master_Transmit(hi2c_, static_cast<uint16_t>(addr_), reinterpret_cast<uint8_t*>(&m), 1, HAL_MAX_DELAY);
     HAL_Delay(1);
@@ -32,7 +32,7 @@ int16_t t2lsb_v(int16_t v) {
     return int16_t(v / lsb);
 }
 
-int16_t lsb_v2t(int16_t v) {
+float lsb_v2t(int16_t v) {
     return v * lsb;
 }
 }

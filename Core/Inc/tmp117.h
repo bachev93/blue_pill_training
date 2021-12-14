@@ -24,9 +24,20 @@ struct message {
 #pragma pack(pop)
 static_assert(sizeof(message) == 3 * sizeof(uint8_t), "");
 
+
+/**
+ * @brief: Функция перевода
+ * @param: Значение температуры в градусах Цельсия
+ * @return: Значение температуры в условных единицах цены младшего бита
+ */
 int16_t t2lsb_v(int16_t v);
 
-int16_t lsb_v2t(int16_t v);
+/**
+ * @brief: Функция перевода
+ * @param: Значение температуры в условных единицах цены младшего бита
+ * @return: Значение температуры в градусах Цельсия
+ */
+float lsb_v2t(int16_t v);
 
 struct tmp117 {    
     /**
@@ -37,7 +48,7 @@ struct tmp117 {
      @param: conf - конфигурация датчика (по-умолчанию RESET)
     */
     explicit tmp117(I2C_HandleTypeDef* hi2c, ADDR addr, int16_t ll, int16_t hl, int16_t conf = 0x02);
-    int16_t get_temperature() const;
+    float get_temperature() const;
 
     void set_low_limit(int16_t);
     void set_high_limit(int16_t);

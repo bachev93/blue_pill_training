@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <iterator>
 #include <numeric>
 
 #include "auxiliary.h"
@@ -8,21 +9,13 @@ OperatingMode::OperatingMode() :
   params_(constants::low_mode) {}
 
 void OperatingMode::change_mode() {
-  auto cur_mode = static_cast<int>(params_.mode);
-  auto mode_count = static_cast<int>(OperatingModeType::MODE_COUNT);
-  OperatingModeType next_mode_type = static_cast<OperatingModeType>((cur_mode + 1) % mode_count);
-
-  switch (next_mode_type)
-  {
+  switch (params_.mode) {
   case OperatingModeType::LOW:
-    params_ = constants::low_mode;
-    break;
+    params_ = constants::middle_mode; break;
   case OperatingModeType::MIDDLE:
-    params_ = constants::middle_mode;
-    break;
+    params_ = constants::high_mode; break;
   case OperatingModeType::HIGH:
-    params_ = constants::high_mode;
-    break;
+    params_ = constants::low_mode; break;
   default:
     printf("unknown operating mode type\r\n");
     break;
@@ -30,27 +23,12 @@ void OperatingMode::change_mode() {
 }
 
 void OperatingMode::blink_leds() const {
-  switch (params_.mode)
-  {
-  case OperatingModeType::LOW:
-    printf("low mode, turn on LED1\r\n");
-    HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-    break;
-  case OperatingModeType::MIDDLE:
-    printf("middle mode, turn on LED1, LED2\r\n");
-    HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_RESET);
-    break;
-  case OperatingModeType::HIGH:
-    printf("high mode, turn on LED1, LED2, LED3\r\n");
-    HAL_GPIO_WritePin(constants::mode_led1.port, constants::mode_led1.pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(constants::mode_led2.port, constants::mode_led2.pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(constants::mode_led3.port, constants::mode_led3.pin, GPIO_PIN_SET);
-    break;
-  }
+  namespace c = thermoregulator::constants;
+  HAL_GPIO_WritePin(c::mode_led1.port, c::mode_led1.pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(c::mode_led2.port, c::mode_led2.pin,
+                    GPIO_PinState(params_.mode > OperatingModeType::LOW));
+  HAL_GPIO_WritePin(c::mode_led3.port, c::mode_led3.pin,
+                    GPIO_PinState(params_.mode > OperatingModeType::MIDDLE));
 }
 
 void OperatingMode::reset_leds() const {
@@ -129,17 +107,19 @@ void change_addr_led_behaviour(DeviceStatus dev_state, Color color) {
   }
 }
 
-float get_battery_voltage(ADC_HandleTypeDef* hadc, int samples_size) {
+float get_battery_voltage(ADC_HandleTypeDef* hadc) {
+  // TODO: sample_size should become compile-time constant
+  static const auto samples_size = 10ul;
   uint32_t samples[samples_size];
 
   HAL_ADC_Start(hadc);
-  for(auto i = 0; i < samples_size; ++i) {
+  for(size_t i = 0ul; i < samples_size; ++i) {
     HAL_ADC_PollForConversion(hadc, 1);
     samples[i] = HAL_ADC_GetValue(hadc);
   }
   HAL_ADC_Stop(hadc);
 
-  auto average = std::accumulate(samples, samples + samples_size, 0) / samples_size;
+  auto average = std::accumulate(std::begin(samples), std::end(samples), 0u) / samples_size;
   // TODO: change 4095 to constant 12 bit integer max val
   return constants::vbat / 4095 * average;
 }
